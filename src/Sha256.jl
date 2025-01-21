@@ -4,14 +4,14 @@ export digest
 #######################################################################
 
 # Helper functions
-ch(x::Uint32, y::Uint32, z::Uint32) = (x & y) $ (~x & z)
-maj(x::Uint32, y::Uint32, z::Uint32) = (x & y) $ (x & z) $ (y & z)
-rot(x::Uint32, n) = x >>> n | x << (32 - n)
-shift(x::Uint32, n) = x >>> n
-sigma0(x::Uint32) = rot(x, 2) $ rot(x, 13) $ rot(x, 22)
-sigma1(x::Uint32) = rot(x, 6) $ rot(x, 11) $ rot(x, 25)
-sgm0(x::Uint32) = rot(x, 7) $ rot(x, 18) $ shift(x, 3)
-sgm1(x::Uint32) = rot(x, 17) $ rot(x, 19) $ shift(x, 10)
+ch(x::UInt32, y::UInt32, z::UInt32) = (x & y) ⊻ (~x & z)
+maj(x::UInt32, y::UInt32, z::UInt32) = (x & y) ⊻ (x & z) ⊻ (y & z)
+rot(x::UInt32, n) = x >>> n | x << (32 - n)
+shift(x::UInt32, n) = x >>> n
+sigma0(x::UInt32) = rot(x, 2) ⊻ rot(x, 13) ⊻ rot(x, 22)
+sigma1(x::UInt32) = rot(x, 6) ⊻ rot(x, 11) ⊻ rot(x, 25)
+sgm0(x::UInt32) = rot(x, 7) ⊻ rot(x, 18) ⊻ shift(x, 3)
+sgm1(x::UInt32) = rot(x, 17) ⊻ rot(x, 19) ⊻ shift(x, 10)
 
 #######################################################################
 
@@ -32,9 +32,9 @@ const k = [0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f
 #######################################################################
 
 # Message expansion
-# msg is an array of Uint32
+# msg is an array of UInt32
 function expand_msg(msg)
-    w = Array(Uint32, 64)
+    w = Array{UInt32}(undef, 64)
     w[1:16] = msg
 
     for j = 17:64
@@ -49,19 +49,19 @@ end
 #######################################################################
 
 # Message padding
-# msg is an array of Uint8, representing the original message in bytes
+# msg is an array of UInt8, representing the original message in bytes
 function pad(msg)
     function construct(slc)
-        local _::Uint32 = 0
-        for i in [int(i) for i in slc]
-            _ <<= 8
-            _ |= i
+        local c::UInt32 = 0
+        for i in [Int(i) for i in slc]
+            c <<= 8
+            c |= i
         end
-        return _
+        return c
     end
 
     function to_byte_array(number)
-        reverse(reinterpret(Uint8, [number]))
+        reverse(reinterpret(UInt8, [number]))
     end
 
     len, = size(msg)
@@ -73,9 +73,9 @@ function pad(msg)
     len, = size(msg)
     n = div(len * 8, 512)
 
-    const rounds::Int32 = 64 / 4
+    rounds::Int32 = 64 / 4
 
-    ret = zeros(Uint32, rounds * n)
+    ret = zeros(UInt32, rounds * n)
     for i = 1:n
         for j = 1:rounds
             ret[16(i - 1)+ j] = construct(msg[64(i - 1) + 4(j - 1) + 1:64(i - 1) + 4j])
@@ -88,22 +88,22 @@ end
 
 #######################################################################
 # Compression
-# init is an array of Uint32 (the initial hash values)
-# w is an array of Uint32 (the expanded message)
+# init is an array of UInt32 (the initial hash values)
+# w is an array of UInt32 (the expanded message)
 function compress(init, w)
     a, b, c, d, e, f, g, h = init
 
     for j = 1:64
-        t1::Uint32 = h + sigma1(e) + ch(e, f, g) + k[j] + w[j]
-        t2::Uint32 = sigma0(a) + maj(a, b, c)
+        t1::UInt32 = h + sigma1(e) + ch(e, f, g) + k[j] + w[j]
+        t2::UInt32 = sigma0(a) + maj(a, b, c)
         h = g
         g = f
         f = e
-        e::Uint32 = d + t1
+        e::UInt32 = d + t1
         d = c
         c = b
         b = a
-        a::Uint32 = t1 + t2
+        a::UInt32 = t1 + t2
     end
     init[1] += a
     init[2] += b
@@ -121,7 +121,7 @@ end
 
 #######################################################################
 # Message digestion
-# msg is an array of Uint8, representing the original message in bytes
+# msg is an array of UInt8, representing the original message in bytes
 function digest(msg)
     blocks, n = pad(msg)
     m = [0x6a09e667, 0xbb67ae85,
@@ -140,4 +140,3 @@ end
 #######################################################################
 
 end # module
-
